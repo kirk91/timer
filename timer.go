@@ -1,8 +1,10 @@
 package timer
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/context"
@@ -45,6 +47,13 @@ const (
 var (
 	// DefaultAllocCap is the expanding capicity when the timer has no capicity to store more events.
 	DefaultAllocCap = 1024
+
+	// ErrStarted represents timer has started
+	ErrStarted = errors.New("timer has started")
+	// ErrNotStarted represents timer has not started
+	ErrNotStarted = errors.New("timer has not started")
+	// ErrStopped represents timer has stopped
+	ErrStopped = errors.New("timer has stopped")
 )
 
 // A Timer represents a set that manage events which is related with time.
@@ -53,6 +62,9 @@ type Timer struct {
 	mu     sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	started int32
+	stopped int32
 
 	allocCap int      // the cap that reallocate more events
 	free     *Event   // free events
@@ -63,9 +75,21 @@ type Timer struct {
 
 // New returns an timer instance with the default allocate capicity
 func New() *Timer {
+	return new(DefaultAllocCap)
+}
+
+// NewWithSize return an timer instance with the given allocate capicity
+func NewWithSize(size int) *Timer {
+	return new(size)
+}
+
+func new(allocCap int) *Timer {
+	ctx, cancel := context.WithCancel(context.Background())
 	t := &Timer{
-		allocCap: DefaultAllocCap,
+		allocCap: allocCap,
 		raw:      time.NewTimer(InfiniteDuration),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	t.allocate()
 	return t
@@ -200,15 +224,24 @@ func (t *Timer) downEvent(i int) {
 }
 
 // Start is used to start the timer.
-func (t *Timer) Start() {
-	ctx, cancel := context.WithCancel(context.Background())
-	t.ctx, t.cancel = ctx, cancel
-	go t.loop()
+func (t *Timer) Start() error {
+	if atomic.CompareAndSwapInt32(&t.started, 0, 1) {
+		go t.loop()
+		return nil
+	}
+	return ErrStarted
 }
 
 // Stop is used to stop the timer.
-func (t *Timer) Stop() {
-	t.cancel()
+func (t *Timer) Stop() error {
+	if !atomic.CompareAndSwapInt32(&t.started, 1, 1) {
+		return ErrNotStarted
+	}
+	if atomic.CompareAndSwapInt32(&t.stopped, 0, 1) {
+		t.cancel()
+		return nil
+	}
+	return ErrStopped
 }
 
 func (t *Timer) loop() {
@@ -255,4 +288,9 @@ func (t *Timer) loop() {
 
 func (t *Timer) reset(d time.Duration) {
 	t.raw.Reset(d)
+}
+
+// IsStopped is used to show the timer is whether stopped.
+func (t *Timer) IsStopped() bool {
+	return atomic.CompareAndSwapInt32(&t.stopped, 1, 1)
 }

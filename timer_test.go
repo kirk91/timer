@@ -1,6 +1,7 @@
 package timer
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -23,6 +24,23 @@ func TestEventDelay(t *testing.T) {
 	if d >= time.Second {
 		t.Fatal("expected duration less one second, but got: %v", d)
 	}
+}
+
+func TestEventString(t *testing.T) {
+	ttl := time.Second
+	expire := time.Now().Add(ttl)
+	e := &Event{expire: expire, ttl: ttl}
+	assert.Equal(t, e.String(), fmt.Sprintf("index %d ttl %v, expire at %v", 0, ttl, expire))
+}
+
+func TestTimerNew(t *testing.T) {
+	timer := New()
+	assert.Equal(t, timer.allocCap, DefaultAllocCap)
+}
+
+func TestTimerNewWithSize(t *testing.T) {
+	timer := NewWithSize(1)
+	assert.Equal(t, timer.allocCap, 1)
 }
 
 func TestTimerAdd(t *testing.T) {
@@ -95,6 +113,10 @@ func TestTimerDel(t *testing.T) {
 		assert.Equal(t, events[i].ttl, outs[i].ttl)
 	}
 
+	events[2].expire = time.Now().Add(time.Millisecond * 25)
+	timer.Add(time.Millisecond*26, nil)
+	timer.Del(timer.Events()[0])
+
 	// including node up
 	ins = []struct {
 		ttl time.Duration
@@ -129,6 +151,11 @@ func TestTimerDel(t *testing.T) {
 	}
 }
 
+func TestDelInvalidEvent(t *testing.T) {
+	timer := New()
+	timer.Del(&Event{})
+}
+
 func TestTimerLoop(t *testing.T) {
 	timer := New()
 	var wg sync.WaitGroup
@@ -155,4 +182,35 @@ func TestTimerLoop(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, timer.free.ttl, event.ttl)
 	assert.Nil(t, timer.free.fn)
+}
+
+func TestTimerAutoReAllocate(t *testing.T) {
+	timer := NewWithSize(1)
+	timer.Add(time.Millisecond, nil)
+	assert.Nil(t, timer.free)
+	timer.Add(time.Millisecond*10, nil)
+	assert.Equal(t, len(timer.Events()), 2)
+	assert.Nil(t, timer.free)
+}
+
+func TestTimerMultiStart(t *testing.T) {
+	timer := New()
+	assert.Nil(t, timer.Start())
+	assert.EqualError(t, timer.Start(), ErrStarted.Error())
+}
+
+func TestTimerStop(t *testing.T) {
+	timer := New()
+	assert.Error(t, timer.Stop(), ErrNotStarted.Error())
+	timer.Start()
+	assert.Nil(t, timer.Stop())
+	assert.Error(t, timer.Stop(), ErrStopped.Error())
+}
+
+func TestTimerIsStopped(t *testing.T) {
+	timer := New()
+	assert.Equal(t, timer.IsStopped(), false)
+	timer.Start()
+	timer.Stop()
+	assert.Equal(t, timer.IsStopped(), true)
 }
