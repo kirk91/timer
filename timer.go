@@ -294,3 +294,13 @@ func (t *Timer) reset(d time.Duration) {
 func (t *Timer) IsStopped() bool {
 	return atomic.CompareAndSwapInt32(&t.stopped, 1, 1)
 }
+
+// UpdateEvent is used to update the ttl of specified event.
+func (t *Timer) UpdateEvent(event *Event, ttl time.Duration) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.del(event)
+	event.ttl = ttl
+	event.expire = time.Now().Add(ttl)
+	t.add(event)
+}
