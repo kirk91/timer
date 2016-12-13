@@ -22,7 +22,7 @@ func TestEventDelay(t *testing.T) {
 	e1 := &Event{expire: now.Add(time.Second)}
 	d := e1.Delay()
 	if d >= time.Second {
-		t.Fatal("expected duration less one second, but got: %v", d)
+		t.Fatalf("expected duration less one second, but got: %v", d)
 	}
 }
 
@@ -164,16 +164,16 @@ func TestTimerLoop(t *testing.T) {
 	begin := time.Now()
 	timer.Add(time.Millisecond*20, func() {
 		defer wg.Done()
-		if elasped := time.Since(begin); elasped > 25*time.Millisecond {
-			assert.Fail(t, "expected execute event after 20 milliseconds, but actual after %v", elasped.String())
+		if elapsed := time.Since(begin); elapsed > 25*time.Millisecond {
+			assert.Fail(t, "expected execute event after 20 milliseconds, but actual after %v", elapsed.String())
 		}
 	})
 
 	wg.Add(1)
 	timer.Add(time.Millisecond*10, func() {
 		defer wg.Done()
-		if elasped := time.Since(begin); elasped > 15*time.Millisecond {
-			assert.Fail(t, "expected execute event after 10 milliseconds, but actual after %v", elasped.String())
+		if elapsed := time.Since(begin); elapsed > 15*time.Millisecond {
+			assert.Fail(t, "expected execute event after 10 milliseconds, but actual after %v", elapsed.String())
 		}
 	})
 
@@ -215,10 +215,10 @@ func TestTimerIsStopped(t *testing.T) {
 	assert.Equal(t, timer.IsStopped(), true)
 }
 
-func TestUpdateEvent(t *testing.T) {
+func TestTimerSet(t *testing.T) {
 	timer := New()
 	event := timer.Add(time.Millisecond, nil)
-	timer.UpdateEvent(event, time.Millisecond*10)
+	timer.Set(event, time.Millisecond*10)
 
 	events := timer.Events()
 	assert.Equal(t, events[0].ttl, time.Millisecond*10)

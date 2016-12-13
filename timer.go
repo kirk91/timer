@@ -95,13 +95,14 @@ func new(allocCap int) *Timer {
 	return t
 }
 
-// Len returns the length of min heap array
+// Len return the length of min heap array.
 func (t *Timer) Len() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return len(t.events)
 }
 
+// Events return the currently events in the timer.
 func (t *Timer) Events() []*Event {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -295,8 +296,8 @@ func (t *Timer) IsStopped() bool {
 	return atomic.CompareAndSwapInt32(&t.stopped, 1, 1)
 }
 
-// UpdateEvent is used to update the ttl of specified event.
-func (t *Timer) UpdateEvent(event *Event, ttl time.Duration) {
+// Set is used to update the ttl of specified event.
+func (t *Timer) Set(event *Event, ttl time.Duration) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.del(event)
