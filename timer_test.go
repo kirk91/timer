@@ -215,10 +215,10 @@ func TestTimerIsStopped(t *testing.T) {
 	assert.Equal(t, timer.IsStopped(), true)
 }
 
-func TestUpdateEvent(t *testing.T) {
+func TestTimerSet(t *testing.T) {
 	timer := New()
 	event := timer.Add(time.Millisecond, nil)
-	timer.UpdateEvent(event, time.Millisecond*10)
+	timer.Set(event, time.Millisecond*10)
 
 	events := timer.Events()
 	assert.Equal(t, events[0].ttl, time.Millisecond*10)
