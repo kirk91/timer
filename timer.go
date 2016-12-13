@@ -95,13 +95,14 @@ func new(allocCap int) *Timer {
 	return t
 }
 
-// Len returns the length of min heap array
+// Len return the length of min heap array.
 func (t *Timer) Len() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return len(t.events)
 }
 
+// Events return the currently events in the timer.
 func (t *Timer) Events() []*Event {
 	t.mu.Lock()
 	defer t.mu.Unlock()
