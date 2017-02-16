@@ -156,6 +156,11 @@ func TestDelInvalidEvent(t *testing.T) {
 	timer.Del(&Event{})
 }
 
+func TestDelNilEvent(t *testing.T) {
+	timer := New()
+	timer.Del(nil)
+}
+
 func TestTimerLoop(t *testing.T) {
 	timer := New()
 	var wg sync.WaitGroup

@@ -171,7 +171,11 @@ func (t *Timer) swapEvent(i, j int) {
 }
 
 // Del is used to remove event from timer.
+// If event is nil, will retrun directly.
 func (t *Timer) Del(event *Event) {
+	if event == nil {
+		return
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.del(event)
