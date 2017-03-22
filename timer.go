@@ -22,7 +22,8 @@ type Event struct {
 	expire time.Time
 	fn     ExpireFunc
 
-	next *Event
+	next  *Event
+	alone bool // indicates event is alone or in the free linked-list of timer
 }
 
 // Less is used to compare expiration with other events.
@@ -139,6 +140,7 @@ func (t *Timer) get() *Event {
 		event = t.free
 	}
 	t.free = event.next
+	event.alone = true
 	return event
 }
 
@@ -178,23 +180,25 @@ func (t *Timer) Del(event *Event) {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.del(event)
-	t.put(event)
+	if t.del(event) || event.alone {
+		t.put(event)
+	}
 }
 
 // put is used to put event to free-event linked list
 func (t *Timer) put(event *Event) {
 	event.fn = nil
 	event.next = t.free
+	event.alone = false
 	t.free = event
 }
 
-func (t *Timer) del(event *Event) {
+func (t *Timer) del(event *Event) bool {
 	i := event.index
 	last := len(t.events) - 1
 	if i < 0 || i > last || t.events[i] != event {
 		// invalid event or event has been removed
-		return
+		return false
 	}
 
 	if i != last {
@@ -206,6 +210,7 @@ func (t *Timer) del(event *Event) {
 	// remove the last event
 	t.events[last].index = -1
 	t.events = t.events[:last]
+	return true
 }
 
 func (t *Timer) downEvent(i int) {
@@ -275,7 +280,6 @@ func (t *Timer) loop() {
 
 				fn = event.fn
 				t.del(event)
-				t.put(event)
 				t.mu.Unlock()
 				// todo: tune performance with go routines
 				if fn != nil {
@@ -301,11 +305,20 @@ func (t *Timer) IsStopped() bool {
 }
 
 // Set is used to update the ttl of specified event.
-func (t *Timer) Set(event *Event, ttl time.Duration) {
+// It returns true if the call reset event, false if the vents has
+// already deleted.
+func (t *Timer) Set(event *Event, ttl time.Duration) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.del(event)
+
+	// events has been recyled
+	if !event.alone {
+		return false
+	}
+
 	event.ttl = ttl
 	event.expire = time.Now().Add(ttl)
 	t.add(event)
+	return true
 }

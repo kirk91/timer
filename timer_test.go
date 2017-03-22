@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -184,9 +185,25 @@ func TestTimerLoop(t *testing.T) {
 
 	event := timer.Events()[1]
 	timer.Start()
+
+	// event expired in loop
 	wg.Wait()
-	assert.Equal(t, timer.free.ttl, event.ttl)
+	assert.Equal(t, 0, timer.Len())
+
+	// event recyling
+	assert.NotEqual(t, unsafe.Pointer(timer.free), unsafe.Pointer(event))
+	timer.Del(event)
+	assert.Equal(t, unsafe.Pointer(timer.free), unsafe.Pointer(event))
 	assert.Nil(t, timer.free.fn)
+
+	// reset recyled event
+	e1 := timer.Add(time.Millisecond*50, func() {})
+	e2 := timer.Add(time.Millisecond*30, func() {})
+	time.Sleep(time.Millisecond * 60)
+	timer.Del(e1)
+	timer.Del(e2)
+	rt := timer.Set(e1, time.Millisecond*20)
+	assert.Equal(t, false, rt)
 }
 
 func TestTimerAutoReAllocate(t *testing.T) {
@@ -227,4 +244,12 @@ func TestTimerSet(t *testing.T) {
 
 	events := timer.Events()
 	assert.Equal(t, events[0].ttl, time.Millisecond*10)
+}
+
+func TestDuplicateDel(t *testing.T) {
+	timer := New()
+	event1 := timer.Add(time.Millisecond, nil)
+	timer.Del(event1)
+	timer.Del(event1)
+	assert.NotEqual(t, unsafe.Pointer(timer.free), unsafe.Pointer(timer.free.next))
 }
