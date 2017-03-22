@@ -170,8 +170,8 @@ func TestTimerLoop(t *testing.T) {
 	begin := time.Now()
 	timer.Add(time.Millisecond*20, func() {
 		defer wg.Done()
-		if elapsed := time.Since(begin); elapsed > 25*time.Millisecond {
-			assert.Fail(t, "expected execute event after 20 milliseconds, but actual after %v", elapsed.String())
+		if elapsed := time.Since(begin); elapsed > 30*time.Millisecond {
+			assert.Fail(t, fmt.Sprintf("expected execute event after 20 milliseconds, but actual after %v", elapsed.String()))
 		}
 	})
 
@@ -179,7 +179,7 @@ func TestTimerLoop(t *testing.T) {
 	timer.Add(time.Millisecond*10, func() {
 		defer wg.Done()
 		if elapsed := time.Since(begin); elapsed > 15*time.Millisecond {
-			assert.Fail(t, "expected execute event after 10 milliseconds, but actual after %v", elapsed.String())
+			assert.Fail(t, fmt.Sprintf("expected execute event after 10 milliseconds, but actual after %v", elapsed.String()))
 		}
 	})
 
