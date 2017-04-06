@@ -39,8 +39,18 @@ func TestTimerNew(t *testing.T) {
 	assert.Equal(t, timer.allocCap, DefaultAllocCap)
 }
 
-func TestTimerNewWithSize(t *testing.T) {
-	timer := NewWithSize(1)
+func TestTimerInit(t *testing.T) {
+	var tr Timer
+	tr.Init(1)
+	assert.Equal(t, tr.allocCap, 1)
+	assert.Equal(t, tr.inited, true)
+
+	tr.Init(2)
+	assert.Equal(t, tr.allocCap, 1)
+}
+
+func TestTimerNewWithCap(t *testing.T) {
+	timer := NewWithCap(1)
 	assert.Equal(t, timer.allocCap, 1)
 }
 
@@ -207,7 +217,7 @@ func TestTimerLoop(t *testing.T) {
 }
 
 func TestTimerAutoReAllocate(t *testing.T) {
-	timer := NewWithSize(1)
+	timer := NewWithCap(1)
 	timer.Add(time.Millisecond, nil)
 	assert.Nil(t, timer.free)
 	timer.Add(time.Millisecond*10, nil)

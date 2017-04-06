@@ -64,6 +64,7 @@ type Timer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
+	inited  bool
 	started int32
 	stopped int32
 
@@ -76,24 +77,37 @@ type Timer struct {
 
 // New returns an timer instance with the default allocate capicity
 func New() *Timer {
-	return new(DefaultAllocCap)
-}
-
-// NewWithSize return an timer instance with the given allocate capicity
-func NewWithSize(size int) *Timer {
-	return new(size)
-}
-
-func new(allocCap int) *Timer {
-	ctx, cancel := context.WithCancel(context.Background())
-	t := &Timer{
-		allocCap: allocCap,
-		raw:      time.NewTimer(InfiniteDuration),
-		ctx:      ctx,
-		cancel:   cancel,
-	}
-	t.allocate()
+	t := &Timer{}
+	t.init(DefaultAllocCap)
 	return t
+}
+
+// NewWithCap returns an timer instance with the given allocate capicity
+func NewWithCap(cap int) *Timer {
+	t := &Timer{}
+	t.init(cap)
+	return t
+}
+
+// Init inits the timer instance with the given allocate capicity
+func (t *Timer) Init(cap int) {
+	t.init(cap)
+	return
+}
+
+func (t *Timer) init(cap int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.inited {
+		return
+	}
+
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+	t.raw = time.NewTimer(InfiniteDuration)
+	t.allocCap = cap
+	t.allocate()
+	t.inited = true
 }
 
 // Len return the length of min heap array.
